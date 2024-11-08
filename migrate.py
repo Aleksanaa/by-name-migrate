@@ -1,6 +1,6 @@
 from tree_sitter import Language, Parser
 from pathlib import Path
-import mmap, collections, os
+import mmap, collections, os, re
 
 NIX_LANGUAGE = Language(
     os.environ["NIX_TREE_SITTER"],
@@ -21,20 +21,24 @@ dislike_packages = {
 
 nix_ref = {}
 nix_ref_rev = {}
+with_invalid_path = []
 
 all_packages_path = Path("./nixpkgs/pkgs/top-level/all-packages.nix").resolve()
+
+# reusing my regex in https://github.com/NixOS/nixpkgs-vet/issues/107
+by_name_restrict = re.compile("^((_[0-9])|[a-zA-Z])[a-zA-Z0-9_-]*$")
 
 
 # query.captures doesn't seem to work for some reasons, so I write this dumb helper
 def find_path_nodes(node):
     paths_string = []
     # we don't want to deal with path interpolation like `./${a}` for now
-    if node.type == "path_expression" and len(node.children) == 1:
+    if (
+        node.type in {"path_expression", "hpath_expression", "spath_expression"}
+        and len(node.children) < 2 # spath has zero children
+    ):
         path_string = str(node.text, encoding="utf8")
-        # we also don't want to deal with `<nixpkgs/pkgs/...>`
-        # There's no case like `<nixpkgs/pkgs/foo/bar/default.nix>`, luckily
-        if path_string.startswith("./") or path_string.startswith("../"):
-            paths_string.append(path_string)
+        paths_string.append(path_string)
     elif hasattr(node, "children"):
         for child in node.children:
             paths_string = paths_string + find_path_nodes(child)
@@ -48,16 +52,22 @@ def setup_ref():
             continue
         nix_tree = parser.parse(nix_file_path.read_bytes())
         for path_string in find_path_nodes(nix_tree.root_node):
+            # we also don't want to deal with `<nixpkgs/pkgs/...>`
+            if not (path_string.startswith("./") or path_string.startswith("../")):
+                with_invalid_path.append(nix_file_path)
+                continue
             path_obj = (nix_file_path / "../" / path_string).resolve()
-            if path_obj != nix_file_path and path_obj.exists():
-                if nix_file_path in nix_ref:
-                    nix_ref[nix_file_path].append(path_obj)
-                else:
-                    nix_ref[nix_file_path] = [path_obj]
-                if path_obj in nix_ref_rev:
-                    nix_ref_rev[path_obj].append(nix_file_path)
-                else:
-                    nix_ref_rev[path_obj] = [nix_file_path]
+            if not path_obj.exists():
+                with_invalid_path.append(nix_file_path)
+                continue
+            if nix_file_path in nix_ref:
+                nix_ref[nix_file_path].append(path_obj)
+            else:
+                nix_ref[nix_file_path] = [path_obj]
+            if path_obj in nix_ref_rev:
+                nix_ref_rev[path_obj].append(nix_file_path)
+            else:
+                nix_ref_rev[path_obj] = [nix_file_path]
 
 
 def get_by_name(name):
@@ -70,7 +80,7 @@ def try_migrate(name, path):
         if not (path / "default.nix").is_file():
             return False
         # function??
-        if len(name) < 2 or name[:2] == "__":
+        if len(name) < 2 or by_name_restrict.match(name) == None:
             return False
         # is this possible (since we have all_packages.nix)?
         if path not in nix_ref_rev:
@@ -81,6 +91,10 @@ def try_migrate(name, path):
             if rev != all_packages_path and path not in rev.parents:
                 return False
         for file in path.rglob("*"):
+            # Not containing paths that nixpkgs-vet doesn't like
+            # like /foo/bar or <nixpkgs/...> or something inexistent
+            if file in with_invalid_path:
+                return False
             # Not referenced and no reference outside of path
             if file in nix_ref_rev:
                 for rev in nix_ref_rev[file]:
@@ -88,7 +102,9 @@ def try_migrate(name, path):
                         return False
             if file in nix_ref:
                 for ref in nix_ref[file]:
-                    if path not in ref.parents:
+                    # we also don't want any file to reference back to default.nix
+                    # including itself, since it will be changed to package.nix later
+                    if path not in ref.parents or ref == path / "default.nix":
                         return False
             # No custom update script, thanks
             if file.suffix not in {".patch", ".diff", ".nix"} and "update" in file.name:
