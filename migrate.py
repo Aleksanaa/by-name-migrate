@@ -1,9 +1,9 @@
 from tree_sitter import Language, Parser
 from pathlib import Path
-import mmap, collections
+import mmap, collections, os
 
 NIX_LANGUAGE = Language(
-    "/nix/store/jj4z8ws8dln6dk0vha8vcf6vyai23v12-tree-sitter-nix-grammar-0.23.0/parser",
+    os.environ["NIX_TREE_SITTER"],
     "nix",
 )
 
@@ -121,7 +121,9 @@ def migrate():
         for path in find_path_nodes(ap_node)
     ]
     # collect duplicate paths in all-packages.nix
-    dup_paths = [item for item, count in collections.Counter(paths).items() if count > 1]
+    dup_paths = [
+        item for item, count in collections.Counter(paths).items() if count > 1
+    ]
     remove_lines = []
     for binding in ap_node.children:
         # Also can be comment

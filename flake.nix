@@ -21,6 +21,9 @@
                 pkgs.black
                 pkgs.nixpkgs-review
               ];
+              shellHook = ''
+                export NIX_TREE_SITTER=${pkgs.tree-sitter-grammars.tree-sitter-nix}/parser
+              '';
             };
           };
         };
