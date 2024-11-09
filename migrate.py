@@ -86,14 +86,14 @@ def get_by_name(name):
     return Path(f"./pkgs/by-name/{name[:2].lower()}/{name}")
 
 
-# Detect passthru.updateScript = ./update.sh situation, and skip
+# passthru.updateScript = writeShellScript ... " ... default.nix"
 def has_update_script_path(node):
     filter_update_script = lambda node: (
         True
         if (
             node.type == "binding"
             and str(node.children[0].text, encoding="utf8").endswith("updateScript")
-            and find_path_nodes(node.children[2]) != []
+            and "default.nix" in str(node.children[2].text, encoding="utf8")
         )
         else False
     )
@@ -116,26 +116,33 @@ def can_migrate(name, path):
         for rev in nix_ref_rev[path]:
             if rev != all_packages_path and path not in rev.parents:
                 return False
-        for file in path.rglob("*"):
-            # Not containing paths that nixpkgs-vet doesn't like
-            # like /foo/bar or <nixpkgs/...> or something inexistent
-            if file in with_invalid_path:
-                return False
-            # Not referenced and no reference outside of path
-            if file in nix_ref_rev:
-                for rev in nix_ref_rev[file]:
+        for subpath in path.rglob("*"):
+            # Not referenced outside of path
+            if subpath in nix_ref_rev:
+                for rev in nix_ref_rev[subpath]:
                     if path not in rev.parents:
                         return False
-            if file in nix_ref:
-                for ref in nix_ref[file]:
+            if not subpath.is_file():
+                continue
+            if subpath.suffix == ".nix":
+                # Not containing paths that nixpkgs-vet doesn't like
+                # like /foo/bar or <nixpkgs/...> or something inexistent
+                if subpath in with_invalid_path:
+                    return False
+                if subpath in nix_ref:
+                    for ref in nix_ref[subpath]:
+                    # No reference to files outside of path
                     # we also don't want any file to reference back to default.nix
                     # including itself, since it will be changed to package.nix later
-                    if path not in ref.parents or ref == path / "default.nix":
-                        return False
-            if file.suffix == ".nix":
-                node = parser.parse(file.read_bytes()).root_node
+                        if path not in ref.parents or ref == path / "default.nix":
+                            return False
+                node = parser.parse(subpath.read_bytes()).root_node
                 # No custom update script, thanks
                 if has_update_script_path(node):
+                    return False
+            else:
+                # may be referencing default.nix in another form, skip anyway
+                if "default.nix" in subpath.read_text():
                     return False
         return True
     # TODO: support migrating files
