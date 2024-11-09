@@ -17,7 +17,10 @@
           devShells = {
             default = pkgs.mkShell {
               packages = [
-                (pkgs.python3.withPackages (ps: [ ps.tree-sitter_0_21 ]))
+                (pkgs.python3.withPackages (ps: [
+                  ps.tree-sitter_0_21
+                  ps.pythonix
+                ]))
                 pkgs.black
                 pkgs.nixpkgs-review
               ];
