@@ -28,6 +28,23 @@
         "url": "https://github.com/NixOS/nixpkgs/archive/cc2f28000298e1269cea6612cd06ec9979dd5d7f.tar.gz"
       }
     },
+    "nixpkgs-vet": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1724971317,
+        "narHash": "sha256-J61eOTeDMHt9f1XmKVrEMAFUgwHGmMxDoSyY3v72QVY=",
+        "owner": "NixOS",
+        "repo": "nixpkgs-vet",
+        "rev": "52fdd2280f6db93536b42a573cea8ef80a025ac2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "0.1.4",
+        "repo": "nixpkgs-vet",
+        "type": "github"
+      }
+    },
     "parts": {
       "inputs": {
         "nixpkgs-lib": "nixpkgs-lib"
@@ -49,6 +66,7 @@
     "root": {
       "inputs": {
         "nixpkgs": "nixpkgs",
+        "nixpkgs-vet": "nixpkgs-vet",
         "parts": "parts"
       }
     }
