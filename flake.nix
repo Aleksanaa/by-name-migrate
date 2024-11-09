@@ -2,10 +2,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     parts.url = "github:hercules-ci/flake-parts";
-    python-nix-src = {
-      url = "github:tweag/python-nix";
-      flake = false;
-    };
   };
 
   outputs =
@@ -21,10 +17,7 @@
           devShells = {
             default = pkgs.mkShell {
               packages = [
-                (pkgs.python3.withPackages (ps: [
-                  ps.tree-sitter_0_21
-                  (ps.callPackage ./python.nix { inherit (inputs) python-nix-src; })
-                ]))
+                (pkgs.python3.withPackages (ps: [ ps.tree-sitter_0_21 ]))
                 pkgs.black
                 pkgs.nixpkgs-review
               ];

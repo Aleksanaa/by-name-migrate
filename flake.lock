@@ -46,27 +46,10 @@
         "type": "github"
       }
     },
-    "python-nix-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1704887265,
-        "narHash": "sha256-JQ28HbAMRkOwzGnYOP/846nArjcErbb4v7q17c5SvIQ=",
-        "owner": "tweag",
-        "repo": "python-nix",
-        "rev": "32539dd7945f1232642247849eaf2c15f765d93c",
-        "type": "github"
-      },
-      "original": {
-        "owner": "tweag",
-        "repo": "python-nix",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "nixpkgs": "nixpkgs",
-        "parts": "parts",
-        "python-nix-src": "python-nix-src"
+        "parts": "parts"
       }
     }
   },
