@@ -1,0 +1,4 @@
+/nixpkgs
+/.direnv
+/play.py
+/test.py
