@@ -175,9 +175,7 @@ def try_eval_by_name(packages_list):
                 allowInsecurePredicate = x: true;
             }};
         }};
-    """.replace(
-        "\n", " "
-    )
+    """
 
     # send in bulk, because pythonix cannot reserve `import <nixpkgs>` value
     eval_same = []
@@ -194,9 +192,7 @@ def try_eval_by_name(packages_list):
                     new_out = __tryEval new.outPath;
                     old_out = __tryEval old.outPath;
                 in new_out.success && old_out.success && new_out.value == old_out.value))
-            """.replace(
-                "\n", " "
-            )
+            """
         eval_string += "]"
         try:
             eval_same += nix.eval(f"{eval_base} {eval_string}")
